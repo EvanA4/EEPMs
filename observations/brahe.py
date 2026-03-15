@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 def get_celestial(oc, ec):
@@ -28,7 +29,7 @@ def get_pos(name: str, timestamp: str):
 
 
 def get_brahe():
-    csv_data = pd.read_csv("brahe.csv")
+    csv_data = pd.read_csv(os.path.join("observations", "brahe.csv"))
     brahe_declinations = csv_data["Declination"].to_numpy()
     brahe_datetimes = [datetime(csv_data.iloc[i]["Year"].astype(np.int64), csv_data.iloc[i]["Month"].astype(np.int64), csv_data.iloc[i]["Day"].astype(np.int64)) for i in range(len(csv_data))]
     return brahe_datetimes, brahe_declinations
