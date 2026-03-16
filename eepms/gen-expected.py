@@ -128,18 +128,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-'''
-radius of deferent = 1 arbitrary distance unit
-
-angle of eccentric
-eccentricity (distance from eccentric / radius of deferent)
-distance from Earth to eccentric / radius of deferent
-radius of epicycle / radius of deferent
-angular velocity of planet around epicycle / angular velocity of epicycle around deferent
-starting angle of epicycle on deferent
-starting angle of planet on epicycle
-
-For the five planets: Mercury, Venus, Mars, Jupiter, Saturn
-'''
