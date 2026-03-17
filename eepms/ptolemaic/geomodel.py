@@ -25,68 +25,101 @@ class RandGeoModel:
     IDX_PLANET_ANGLE=6
     MAX_ECCENTRICITY = .9
     RADII_BUFFER = .05 # minimum distance between Earth and planet
-    MUTATION_RATES = [.05, .05, .05, .05, .05, .05, .05]
+    MUTATION_RATES = [.1 for i in range(7)]
     CROSSOVER_RATE = .2
 
 
-    def __init__(self, start_time: datetime, start_long: float):
-        self.__start_time = start_time
-        self.__start_long = start_long
+    def __init__(self, start_time: datetime, start_long: float, properties=None):
+        self.start_time = start_time
+        self.start_long = start_long
 
-        self.__start_eccentric_angle = random.random() * 2 * math.pi
-        self.__start_eccentricity = random.random() * self.MAX_ECCENTRICITY
-        self.__deferent_center = (
-            self.__start_eccentricity * math.cos(self.__start_eccentric_angle),
-            self.__start_eccentricity * math.sin(self.__start_eccentric_angle)
-        )
-        self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
-        self.__start_pe_av = math.radians(random.random() * 5)
-        self.__start_ed_av = math.radians(random.random() * 1)
+        if properties != None:
+            self.properties = properties
+            self.__deferent_center = (
+                self.properties[self.IDX_ECCENTRICITY] * math.cos(self.properties[self.IDX_ECCENTRIC_ANGLE]),
+                self.properties[self.IDX_ECCENTRICITY] * math.sin(self.properties[self.IDX_ECCENTRIC_ANGLE])
+            )
 
-        # confined such that planet can be at starting longitude
-        bounds, offset = self.epicycle_bounds()
-        diff = bounds[1] - bounds[0]
-        self.__start_epicycle_angle = bounds[0] + random.random()*diff + offset
+        else:
+            self.__start_eccentric_angle = random.random() * 2 * math.pi
+            self.__start_eccentricity = random.random() * self.MAX_ECCENTRICITY
+            self.__deferent_center = (
+                self.__start_eccentricity * math.cos(self.__start_eccentric_angle),
+                self.__start_eccentricity * math.sin(self.__start_eccentric_angle)
+            )
+            self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
+            self.__start_pe_av = math.radians(random.random() * 5)
+            self.__start_ed_av = math.radians(random.random() * 1)
 
-        # determine planet angle
-        h = self.__start_eccentricity * math.cos(self.__start_eccentric_angle) + math.cos(self.__start_epicycle_angle)
-        k = self.__start_eccentricity * math.sin(self.__start_eccentric_angle) + math.sin(self.__start_epicycle_angle)
-        m = math.tan(self.__start_long)
-        a = m*m + 1
-        b = -2 * (h + k*m)
-        c = h*h + k*k - self.__start_radii**2
-        sign = -1 if random.random() < .5 else 1
-        x = (-b + sign * math.sqrt(b*b - 4*a*c)) / (2*a)
-        y = m*x
-        self.__start_planet_angle = math.atan2(y-k, x-h)
-        
-        self.properties = [
-            self.__start_eccentric_angle,
-            self.__start_eccentricity,
-            self.__start_radii,
-            self.__start_pe_av,
-            self.__start_ed_av,
-            self.__start_epicycle_angle,
-            self.__start_planet_angle
-        ]
+            # confined such that planet can be at starting longitude
+            bounds, offset = self.epicycle_bounds()
+            diff = bounds[1] - bounds[0]
+            self.__start_epicycle_angle = bounds[0] + random.random()*diff + offset
+
+            # determine planet angle
+            h = self.__start_eccentricity * math.cos(self.__start_eccentric_angle) + math.cos(self.__start_epicycle_angle)
+            k = self.__start_eccentricity * math.sin(self.__start_eccentric_angle) + math.sin(self.__start_epicycle_angle)
+            m = math.tan(self.start_long)
+            a = m*m + 1
+            b = -2 * (h + k*m)
+            c = h*h + k*k - self.__start_radii**2
+            sign = -1 if random.random() < .5 else 1
+            x = (-b + sign * math.sqrt(b*b - 4*a*c)) / (2*a)
+            y = m*x
+            self.__start_planet_angle = math.atan2(y-k, x-h)
+            
+            self.properties = [
+                self.__start_eccentric_angle,
+                self.__start_eccentricity,
+                self.__start_radii,
+                self.__start_pe_av,
+                self.__start_ed_av,
+                self.__start_epicycle_angle,
+                self.__start_planet_angle
+            ]
 
 
     def mutate(self):
+        '''
+        Makes own genome slightly different from before
+        '''
         self.properties = [
             self.properties[i] +
             random.random() * self.properties[i] * self.MUTATION_RATES[i] * 2 -
             self.properties[i] * self.MUTATION_RATES[i]
             for i in range(len(self.properties))
         ]
+        bounds = [
+            (0, 2*math.pi),
+            (0, self.MAX_ECCENTRICITY),
+            (0, 1 - self.properties[self.IDX_ECCENTRICITY] - self.RADII_BUFFER),
+            (0, math.pi/2),
+            (0, math.pi/2),
+            (0, 2*math.pi),
+            (0, 2*math.pi)
+        ]
+        for i in range(len(self.properties)):
+            if self.properties[i] < bounds[i][0]:
+                self.properties[i] = bounds[i][0]
+            elif self.properties[i] > bounds[i][1]:
+                self.properties[i] = bounds[i][1]
 
 
-    def crossover(self, model):
-        pass
+    def crossover(self, model: RandGeoModel):
+        '''
+        Returns new genome from two models
+        '''
+        prob_nothing = (1 - self.CROSSOVER_RATE)**len(self.properties)
+        if not random.random() < prob_nothing:
+            start_swap = random.randint(1, len(self.properties)-1)
+            return self.properties[:start_swap] + model.properties[start_swap:]
+        return self.properties.copy()
+            
 
 
     def predict_pos(self, curr_time: datetime):
         # get current epicycle position
-        td = curr_time - self.__start_time
+        td = curr_time - self.start_time
         days = td.days + td.seconds/86400
         curr_ec_angle = self.properties[self.IDX_EPICYCLE_ANGLE] + days*self.properties[self.IDX_ED_AV]
         ec_pos = (
@@ -108,8 +141,8 @@ class RandGeoModel:
     def is_valid_epicycle(self, epicycle_angle: float):
         ex = self.__start_eccentricity * math.cos(self.__start_eccentric_angle) + math.cos(epicycle_angle)
         ey = self.__start_eccentricity * math.sin(self.__start_eccentric_angle) + math.sin(epicycle_angle)
-        if (ex + ey * math.tan(self.__start_long) < 0): return False
-        a = -math.tan(self.__start_long)
+        if (ex + ey * math.tan(self.start_long) < 0): return False
+        a = -math.tan(self.start_long)
         sq_distance = (a * ex + ey)**2 / (a*a + 1)
         return sq_distance < self.__start_radii**2
 
@@ -117,14 +150,14 @@ class RandGeoModel:
     def guaranteed_epicycle(self):
         h = self.__start_eccentricity * math.cos(self.__start_eccentric_angle)
         k = self.__start_eccentricity * math.sin(self.__start_eccentric_angle)
-        m = math.tan(self.__start_long)
+        m = math.tan(self.start_long)
         a = m**2 + 1
         b = -2 * (h + k*m)
         c = h*h + k*k - 1
         
         x0 = (-b + math.sqrt(b*b - 4*a*c)) / (2*a)
         y0 = m*x0
-        if (x0 + math.tan(self.__start_long)*y0 > 0):
+        if (x0 + math.tan(self.start_long)*y0 > 0):
             return math.atan2(y0-k, x0-h)
         else:
             x1 = (-b - math.sqrt(b*b - 4*a*c)) / (2*a)
@@ -161,9 +194,22 @@ class RandGeoModel:
         return bounds, offset
 
 
+    def print_props(self):
+        print(
+            f"ECCENTRIC_ANGLE: {self.properties[self.IDX_ECCENTRIC_ANGLE]}\n"
+            f"ECCENTRICITY: {self.properties[self.IDX_ECCENTRICITY]}\n"
+            f"RADII: {self.properties[self.IDX_RADII]}\n"
+            f"PE_AV: {self.properties[self.IDX_PE_AV]}\n"
+            f"ED_AV: {self.properties[self.IDX_ED_AV]}\n"
+            f"EPICYCLE_ANGLE: {self.properties[self.IDX_EPICYCLE_ANGLE]}\n"
+            f"PLANET_ANGLE: {self.properties[self.IDX_PLANET_ANGLE]}\n"
+            f"ECCENTRICITY: {self.properties[self.IDX_ECCENTRICITY]}\n"
+        )
+
+
     def graph_model(self, curr_time=None):
         # compute relevant positions
-        epicycle_center, planet_pos, long = self.predict_pos(curr_time if curr_time else self.__start_time)
+        epicycle_center, planet_pos, long = self.predict_pos(curr_time if curr_time else self.start_time)
 
         # draw Earth, eccentric, and deferent
         plt.figure(figsize=(6, 6))
@@ -184,7 +230,7 @@ class RandGeoModel:
         x_limits = ax.get_xlim()
         y_limits = ax.get_ylim()
         if curr_time == None:
-            plt.plot(x_limits, [math.tan(self.__start_long) * val for val in x_limits])
+            plt.plot(x_limits, [math.tan(self.start_long) * val for val in x_limits])
 
         # set axes equal
         x_range = abs(x_limits[1] - x_limits[0])
