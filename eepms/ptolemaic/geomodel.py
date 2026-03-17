@@ -29,7 +29,7 @@ class RandGeoModel:
     CROSSOVER_RATE = .2
 
 
-    def __init__(self, start_time: datetime, start_long: float, properties=None):
+    def __init__(self, start_time: datetime, start_long: float, avg_av: float, properties=None):
         self.start_time = start_time
         self.start_long = start_long
 
@@ -48,8 +48,8 @@ class RandGeoModel:
                 self.__start_eccentricity * math.sin(self.__start_eccentric_angle)
             )
             self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
-            self.__start_pe_av = math.radians(random.random() * 5)
-            self.__start_ed_av = math.radians(random.random() * 1)
+            self.__start_pe_av = .8*avg_av + .4*random.random()*avg_av
+            self.__start_ed_av = .4*avg_av + .2*random.random()*avg_av
 
             # confined such that planet can be at starting longitude
             bounds, offset = self.epicycle_bounds()
@@ -105,7 +105,7 @@ class RandGeoModel:
                 self.properties[i] = bounds[i][1]
 
 
-    def crossover(self, model: RandGeoModel):
+    def crossover(self, model: "RandGeoModel"):
         '''
         Returns new genome from two models
         '''
