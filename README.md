@@ -9,16 +9,6 @@ Scripts are divided into directories by functionality:
 | observations | Comparing predictions from Astropy or EEPMs to actual observations. |
 | procession | Scripts for measuring and visualizing the error resulting from aspidal procession. |
 
-### To-do list
-
-- Evolve simple model with no precession or 
-    - Use recent data (at least 2000s)
-- Visualize errors over time for Mercury
-    - Demonstrates need for precession
-    - *Maybe create arbitrary system w and w/o precession and compare the two error graphs?*
-- Account for aspidal precession
-- Visualize errors again
-
 ### Helpful resouces / notes
 
 https://www.youtube.com/watch?v=AReKBoiph6g

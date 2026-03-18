@@ -203,7 +203,6 @@ class RandGeoModel:
             f"ED_AV:           {self.properties[self.IDX_ED_AV]}\n"
             f"EPICYCLE_ANGLE:  {self.properties[self.IDX_EPICYCLE_ANGLE]}\n"
             f"PLANET_ANGLE:    {self.properties[self.IDX_PLANET_ANGLE]}\n"
-            f"ECCENTRICITY:    {self.properties[self.IDX_ECCENTRICITY]}\n"
         )
 
 
@@ -243,3 +242,8 @@ class RandGeoModel:
 
         plt.show()
         plt.close()
+
+'''
+TODO mutation method doesn't make sense for angles
+TODO maybe be smart with starting longitude using fancy maths?
+'''
