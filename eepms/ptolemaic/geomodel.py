@@ -246,4 +246,5 @@ class RandGeoModel:
 '''
 TODO mutation method doesn't make sense for angles
 TODO maybe be smart with starting longitude using fancy maths?
+TODO create penalty for synodic period (every planet enters retrograde!)
 '''
