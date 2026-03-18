@@ -17,21 +17,23 @@ class RandGeoModel:
     - starting angle of planet on epicycle
     '''
     IDX_ECCENTRIC_ANGLE = 0
-    IDX_ECCENTRICITY = 1
-    IDX_RADII = 2
-    IDX_PE_AV = 3
-    IDX_ED_AV = 4
-    IDX_EPICYCLE_ANGLE = 5
-    IDX_PLANET_ANGLE = 6
+    IDX_EPICYCLE_ANGLE = 1
+    IDX_PLANET_ANGLE = 2
+    IDX_ECCENTRICITY = 3
+    IDX_RADII = 4
+    IDX_PE_AV = 5
+    IDX_ED_AV = 6
     MAX_ECCENTRICITY = .9
     RADII_BUFFER = .1 # minimum distance between Earth and planet
-    MUTATION_RATES = [.2 for i in range(7)]
+    MUTATION_RATES = [math.radians(2), math.radians(2), math.radians(2), .1, .1, .1, .1]
     CROSSOVER_RATE = .2
 
 
-    def __init__(self, start_time: datetime, start_long: float, avg_av: float, properties=None):
+    def __init__(self, start_time: datetime, start_long: float, avg_av: float, synodic_av: float, properties=None):
         self.start_time = start_time
         self.start_long = start_long
+        self.avg_av = avg_av
+        self.synodic_av = synodic_av
 
         if properties != None:
             self.properties = properties
@@ -48,8 +50,8 @@ class RandGeoModel:
                 self.__start_eccentricity * math.sin(self.__start_eccentric_angle)
             )
             self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
-            self.__start_pe_av = .8*avg_av + .4*random.random()*avg_av
-            self.__start_ed_av = .4*avg_av + .2*random.random()*avg_av
+            self.__start_pe_av = .8*synodic_av + .4*random.random()*synodic_av
+            self.__start_ed_av = .8*avg_av + .4*random.random()*avg_av
 
             # confined such that planet can be at starting longitude
             bounds, offset = self.epicycle_bounds()
@@ -70,39 +72,40 @@ class RandGeoModel:
             
             self.properties = [
                 self.__start_eccentric_angle,
+                self.__start_epicycle_angle,
+                self.__start_planet_angle,
                 self.__start_eccentricity,
                 self.__start_radii,
                 self.__start_pe_av,
                 self.__start_ed_av,
-                self.__start_epicycle_angle,
-                self.__start_planet_angle
             ]
 
 
-    def mutate(self):
+    def mutate(self, strength: float):
         '''
         Makes own genome slightly different from before
         '''
-        self.properties = [
-            self.properties[i] +
-            random.random() * self.properties[i] * self.MUTATION_RATES[i] * 2 -
-            self.properties[i] * self.MUTATION_RATES[i]
-            for i in range(len(self.properties))
-        ]
+        FIRST_NONANGLE_IDX = 3
+        for i in range(FIRST_NONANGLE_IDX):
+            self.properties[i] = (self.properties[i] + random.random()*2*self.MUTATION_RATES[i]*strength - self.MUTATION_RATES[i]*strength) % (2*math.pi)
+
+
+        for i in range(FIRST_NONANGLE_IDX, len(self.properties)):
+            self.properties[i] +=                                                                            \
+                random.random() * self.properties[i] * self.MUTATION_RATES[i-FIRST_NONANGLE_IDX]*strength*2 - \
+                self.properties[i] * self.MUTATION_RATES[i-FIRST_NONANGLE_IDX]*strength
+
         bounds = [
-            (0, 2*math.pi),
             (0, self.MAX_ECCENTRICITY),
             (0, 1 - self.properties[self.IDX_ECCENTRICITY] - self.RADII_BUFFER),
-            (0, math.pi/2),
-            (0, math.pi/2),
-            (0, 2*math.pi),
-            (0, 2*math.pi)
+            (.8*self.synodic_av, 1.2*self.synodic_av),
+            (.8*self.avg_av, 1.2*self.avg_av),
         ]
-        for i in range(len(self.properties)):
-            if self.properties[i] < bounds[i][0]:
-                self.properties[i] = bounds[i][0]
-            elif self.properties[i] > bounds[i][1]:
-                self.properties[i] = bounds[i][1]
+        for i in range(3, len(self.properties)):
+            if self.properties[i] < bounds[i-FIRST_NONANGLE_IDX][0]:
+                self.properties[i] = bounds[i-FIRST_NONANGLE_IDX][0]
+            elif self.properties[i] > bounds[i-FIRST_NONANGLE_IDX][1]:
+                self.properties[i] = bounds[i-FIRST_NONANGLE_IDX][1]
 
 
     def crossover(self, model: "RandGeoModel"):
@@ -197,12 +200,12 @@ class RandGeoModel:
     def print_props(self):
         print(
             f"ECCENTRIC_ANGLE: {self.properties[self.IDX_ECCENTRIC_ANGLE]}\n"
+            f"EPICYCLE_ANGLE:  {self.properties[self.IDX_EPICYCLE_ANGLE]}\n"
+            f"PLANET_ANGLE:    {self.properties[self.IDX_PLANET_ANGLE]}\n"
             f"ECCENTRICITY:    {self.properties[self.IDX_ECCENTRICITY]}\n"
             f"RADII:           {self.properties[self.IDX_RADII]}\n"
             f"PE_AV:           {self.properties[self.IDX_PE_AV]}\n"
             f"ED_AV:           {self.properties[self.IDX_ED_AV]}\n"
-            f"EPICYCLE_ANGLE:  {self.properties[self.IDX_EPICYCLE_ANGLE]}\n"
-            f"PLANET_ANGLE:    {self.properties[self.IDX_PLANET_ANGLE]}\n"
         )
 
 
@@ -242,9 +245,3 @@ class RandGeoModel:
 
         plt.show()
         plt.close()
-
-'''
-TODO mutation method doesn't make sense for angles
-TODO maybe be smart with starting longitude using fancy maths?
-TODO create penalty for synodic period (every planet enters retrograde!)
-'''

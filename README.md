@@ -12,7 +12,3 @@ Scripts are divided into directories by functionality:
 ### Helpful resouces / notes
 
 https://www.youtube.com/watch?v=AReKBoiph6g
-
-Notes:
-- Remember precession and nutation
-- *Ptolemy's models may have limited planets to the ecliptic?*
