@@ -4,15 +4,16 @@ import matplotlib.pyplot as plt
 import os
 import random
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from geomodel import RandGeoModel
 
 
 class RGM_Evolver:
     GEN_SIZE = 1000
     TOURN_SIZE = 10
-    NUM_GENS = 1
-    PENALTY = 50_000
+    NUM_GENS = 10
+    PERFECT = 10
+    PENALTY = 1
     SMALL_EPICYCLE = .1
 
 
@@ -23,19 +24,11 @@ class RGM_Evolver:
         self.longitudes = df["Longitude"][::4].to_list()
 
         # approximate average angular velocity of planet
-        longitude_range = 0
-        for i in range(len(self.longitudes)-1):
-            if self.longitudes[i+1]-self.longitudes[i] < -300:
-                print("loop detected!")
-                if i == 0: longitude_range += 360 - self.longitudes[0]
-                else: longitude_range += 360
-        longitude_range += self.longitudes[-1]
-        longitude_range = math.radians(longitude_range)
-        TIME_DELTA = self.datetimes[1] - self.datetimes[0]
+        self.longitude_range = math.radians(self.get_long_range(self.longitudes))
+        TIME_DELTA = self.datetimes[-1] - self.datetimes[0]
         DAYS_RANGE = TIME_DELTA.days + TIME_DELTA.seconds/86400
-        self.avg_av = longitude_range / DAYS_RANGE
-
-        print("AVERAGE AV:", self.avg_av)
+        self.avg_av = self.longitude_range / DAYS_RANGE
+        self.max_msqe = 180**2 * len(self.datetimes)
 
         # populate first generation
         self.gen = [
@@ -44,26 +37,56 @@ class RGM_Evolver:
         ]
 
 
-    def model_loss(self, model: RandGeoModel, verbose=False):
+    def get_long_range(self, longs: list[float], is_radians=False):
+        # assumes longitudes are in degrees
+        HALF_JUMP = math.pi if is_radians else 180
+        FULL_JUMP = 2*HALF_JUMP
+        offset = 0
+        for i in range(1, len(longs)):
+            wrapped_down = longs[i]-longs[i-1] < -HALF_JUMP
+            wrapped_up = longs[i]-longs[i-1] > HALF_JUMP
+            if wrapped_down: offset += FULL_JUMP
+            elif wrapped_up: offset -= FULL_JUMP
+        return longs[-1] - longs[0] + offset
+
+
+    def min_long_diff(self, first, second):
+        # assumes longitudes are in degrees
+        long_top = max(first, second)
+        long_bottom = min(first, second)
+        start_diff_frac = min(long_top-long_bottom, 360-long_top+long_bottom) / 180
+        return start_diff_frac
+
+
+    def model_eval(self, model: RandGeoModel, verbose=False):
         # mean squared error
         preds = [model.predict_pos(dt)[2] for dt in self.datetimes]
         sq_losses = [(preds[i]-self.longitudes[i])**2 for i in range(len(self.datetimes))]
-        mean_sq_loss = 0 # np.mean(sq_losses)
+        msqe_penalty = np.mean(sq_losses) / self.max_msqe * self.PENALTY
 
-        # stagnant penalty (planet doesn't move)
-        stagnant_penalty = (1 - model.properties[RandGeoModel.IDX_ED_AV]/self.avg_av) * self.PENALTY
+        # starting longitude should be the same
+        start_penalty = self.min_long_diff(preds[0], self.longitudes[0]) / 2 * self.PENALTY
+
+        # planet's longitude should change the same amount
+        preds_range = math.radians(self.get_long_range(preds))
+        long_penalty = math.fabs(preds_range-self.longitude_range) / self.longitude_range * self.PENALTY
+
+        # epicycle-around-deferent speed should be around average angular speed of planet
+        stagnant_penalty = math.fabs(model.properties[RandGeoModel.IDX_ED_AV]-self.avg_av)/self.avg_av * self.PENALTY
 
         # unreasonably small epicycle
-        radii_penalty = 0 #self.PENALTY if model.properties[RandGeoModel.IDX_RADII] < self.SMALL_EPICYCLE else 0
+        radii_penalty = self.PENALTY if model.properties[RandGeoModel.IDX_RADII] < self.SMALL_EPICYCLE else 0
 
         if verbose:
             print(
-                f"mean_sq_loss:{mean_sq_loss:15f}\n"
-                f"stagnant_penalty:{stagnant_penalty:15f}\n"
-                f"radii_penalty:{radii_penalty:15f}\n"
+                f"msqe_penalty:     {msqe_penalty}\n"
+                f"start_penalty:    {start_penalty}\n"
+                f"stagnant_penalty: {stagnant_penalty}\n"
+                f"radii_penalty:    {radii_penalty}\n"
+                f"long_penalty:     {long_penalty}\n"
             )
 
-        return mean_sq_loss + stagnant_penalty + radii_penalty
+        return self.PERFECT - (msqe_penalty + start_penalty + long_penalty + stagnant_penalty + radii_penalty)
 
 
     def reproduce(self, tourn, GEN_SIZE):
@@ -86,14 +109,14 @@ class RGM_Evolver:
         gen_results: list[tuple[list[RandGeoModel], list[float]]] = []
         tourn: list[tuple[RandGeoModel, float]] = []
         
-        print("Gen |       Loss", flush=True)
+        print("Gen | Fitness", flush=True)
         for i in range(self.NUM_GENS):
             print(f"{i:<3d}", end="", flush=True)
             gen_data = [
-                (self.gen[i], self.model_loss(self.gen[i]))
+                (self.gen[i], self.model_eval(self.gen[i]))
                 for i in range(self.GEN_SIZE)
             ]
-            gen_data.sort(key=lambda x: x[1])
+            gen_data.sort(key=lambda x: x[1], reverse=True)
 
             tourn = gen_data[:self.TOURN_SIZE]
             gen_results.append(tourn)
@@ -101,16 +124,16 @@ class RGM_Evolver:
             if i != self.NUM_GENS-1:
                 self.gen = self.reproduce(tourn, self.GEN_SIZE)
 
-            print(f" | {tourn[0][1]:5.4f}", flush=True)
+            print(f" | {tourn[0][1]:>7.4f}", flush=True)
         print()
 
         # Loss vs. Generation
         plt.figure(figsize=(10, 6))
-        plt.title("Loss vs. Generation")
+        plt.title("Fitness vs. Generation")
         plt.xlabel("Generation")
-        plt.ylabel("Loss")
-        losses = [result[0][1] for result in gen_results]
-        plt.plot(range(self.NUM_GENS), losses)
+        plt.ylabel("Fitness")
+        fitnesses = [result[0][1] for result in gen_results]
+        plt.plot(range(self.NUM_GENS), fitnesses)
         plt.show()
         plt.close()
 
@@ -118,13 +141,14 @@ class RGM_Evolver:
         best_model = tourn[0][0]
         best_model.print_props()
         best_model.graph_model(datetime.now())
-        self.model_loss(best_model, True)
+        self.model_eval(best_model, True)
 
         # Expected Planetary Path
         plt.figure(figsize=(10, 6))
         plt.title("Planetary Paths")
         plt.xlabel("Date")
         plt.ylabel("Longitude")
+        plt.yticks(range(0,361,30))
         plt.scatter(self.datetimes, self.longitudes, s=10, c='g', label="Expected", alpha=.5)
         plt.scatter(self.datetimes, [best_model.predict_pos(dt)[2] for dt in self.datetimes], s=10, c='r', label="Actual", alpha=.5)
         plt.legend()

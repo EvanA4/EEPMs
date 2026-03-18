@@ -1,9 +1,11 @@
 from evolver import RGM_Evolver
+from geomodel import RandGeoModel
+from datetime import datetime
 
 
 def main():
     evo = RGM_Evolver()
-    # evo.simulate()
+    evo.simulate()
 
 
 if __name__ == "__main__":

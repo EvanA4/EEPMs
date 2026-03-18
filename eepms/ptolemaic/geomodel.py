@@ -16,16 +16,16 @@ class RandGeoModel:
     - starting angle of epicycle on deferent
     - starting angle of planet on epicycle
     '''
-    IDX_ECCENTRIC_ANGLE=0
-    IDX_ECCENTRICITY=1
-    IDX_RADII=2
-    IDX_PE_AV=3
-    IDX_ED_AV=4
-    IDX_EPICYCLE_ANGLE=5
-    IDX_PLANET_ANGLE=6
+    IDX_ECCENTRIC_ANGLE = 0
+    IDX_ECCENTRICITY = 1
+    IDX_RADII = 2
+    IDX_PE_AV = 3
+    IDX_ED_AV = 4
+    IDX_EPICYCLE_ANGLE = 5
+    IDX_PLANET_ANGLE = 6
     MAX_ECCENTRICITY = .9
-    RADII_BUFFER = .05 # minimum distance between Earth and planet
-    MUTATION_RATES = [.1 for i in range(7)]
+    RADII_BUFFER = .1 # minimum distance between Earth and planet
+    MUTATION_RATES = [.2 for i in range(7)]
     CROSSOVER_RATE = .2
 
 
@@ -135,7 +135,7 @@ class RandGeoModel:
         )
 
         # atan2 to get longitude
-        return ec_pos, pl_pos, math.atan2(pl_pos[1], pl_pos[0])
+        return ec_pos, pl_pos, math.degrees(math.atan2(pl_pos[1], pl_pos[0]))%360
 
 
     def is_valid_epicycle(self, epicycle_angle: float):
@@ -197,13 +197,13 @@ class RandGeoModel:
     def print_props(self):
         print(
             f"ECCENTRIC_ANGLE: {self.properties[self.IDX_ECCENTRIC_ANGLE]}\n"
-            f"ECCENTRICITY: {self.properties[self.IDX_ECCENTRICITY]}\n"
-            f"RADII: {self.properties[self.IDX_RADII]}\n"
-            f"PE_AV: {self.properties[self.IDX_PE_AV]}\n"
-            f"ED_AV: {self.properties[self.IDX_ED_AV]}\n"
-            f"EPICYCLE_ANGLE: {self.properties[self.IDX_EPICYCLE_ANGLE]}\n"
-            f"PLANET_ANGLE: {self.properties[self.IDX_PLANET_ANGLE]}\n"
-            f"ECCENTRICITY: {self.properties[self.IDX_ECCENTRICITY]}\n"
+            f"ECCENTRICITY:    {self.properties[self.IDX_ECCENTRICITY]}\n"
+            f"RADII:           {self.properties[self.IDX_RADII]}\n"
+            f"PE_AV:           {self.properties[self.IDX_PE_AV]}\n"
+            f"ED_AV:           {self.properties[self.IDX_ED_AV]}\n"
+            f"EPICYCLE_ANGLE:  {self.properties[self.IDX_EPICYCLE_ANGLE]}\n"
+            f"PLANET_ANGLE:    {self.properties[self.IDX_PLANET_ANGLE]}\n"
+            f"ECCENTRICITY:    {self.properties[self.IDX_ECCENTRICITY]}\n"
         )
 
 
