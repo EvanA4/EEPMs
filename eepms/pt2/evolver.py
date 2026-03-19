@@ -25,6 +25,7 @@ class RGM_Evolver:
         df = pd.read_csv(os.path.join("csvs", "expected", "mercury.csv"))
         self.datetimes = [datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") for timestamp in df["Timestamp"].to_list()[::4]]
         self.longitudes = df["Longitude"].to_list()[::4]
+        # self.cumu_longs = self.get_cumu_longs()
         self.stage = 1
 
         # approximate average angular velocity of planet
@@ -37,6 +38,10 @@ class RGM_Evolver:
         synodic = self.get_synodic_p(self.longitudes)
         self.synodic_av = 2*math.pi / synodic
 
+        # two elements of retrograde hump:
+        # 1. average days between peak and trough
+        # 2. average difference in longitude between peak and trough
+
         # find average drop in longitude with each step, only looking at retrograde (in degrees)
         self.retrostep, self.prostep = self.get_steps(self.longitudes)
 
@@ -48,6 +53,10 @@ class RGM_Evolver:
             f"Avg Retrostep:            {self.retrostep}\n"
             f"Avg Prostep:              {self.prostep}\n"
         )
+
+    
+    def get_hump(self, longs: list[float]):
+        pass
 
 
     def get_steps(self, longs: list[float], is_radians=False):
@@ -87,6 +96,21 @@ class RGM_Evolver:
             elif not wrapped_down and not passed_first_downturn and first_retro is not None:
                 passed_first_downturn = True
         return 0.
+    
+
+    def get_cumu_longs(self, longs: list[float], is_radians=False):
+        half_jump = math.pi if is_radians else 180
+        full_jump = 2*half_jump
+        offset = 0
+        cumu_longs = []
+        for i in range(1, len(longs)):
+            wrapped_down = longs[i]-longs[i-1] < -half_jump
+            wrapped_up = longs[i]-longs[i-1] > half_jump
+            if wrapped_down: offset += full_jump
+            elif wrapped_up: offset -= full_jump
+            cumu_longs.append(longs[0] + offset)
+
+        return cumu_longs
 
 
     def get_long_range(self, longs: list[float], is_radians=False):
