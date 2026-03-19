@@ -12,7 +12,7 @@ from geomodel import RandGeoModel, RGM_Initializer
 class RGM_Evolver:
     GEN_SIZE = 1000
     TOURN_SIZE = 10
-    NUM_GENS = [0, 5, 5, 5]
+    NUM_GENS = [0, 10, 10, 5]
     PERFECT = 10
     PENALTY = 1
     SMALL_EPICYCLE = .1
@@ -22,9 +22,9 @@ class RGM_Evolver:
     def __init__(self):
         # read data
         self.gen: list[RandGeoModel] = []
-        df = pd.read_csv(os.path.join("csvs", "expected", "jupiter.csv"))
-        self.datetimes = [datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") for timestamp in df["Timestamp"].to_list()]
-        self.longitudes = df["Longitude"].to_list()
+        df = pd.read_csv(os.path.join("csvs", "expected", "mercury.csv"))
+        self.datetimes = [datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") for timestamp in df["Timestamp"].to_list()[::4]]
+        self.longitudes = df["Longitude"].to_list()[::4]
         self.stage = 1
 
         # approximate average angular velocity of planet
@@ -115,6 +115,10 @@ class RGM_Evolver:
         errs = [self.min_long_diff(preds[i],self.longitudes[i]) for i in range(len(self.datetimes))]
         sq_errs = [err**2 for err in errs]
         msqe_penalty = float(np.mean(sq_errs) * self.PENALTY * 5)
+        if self.stage == 1:
+            if verbose:
+                print(f"msqe_penalty: {msqe_penalty}\n")
+            return self.PERFECT - msqe_penalty
 
         # starting longitude should be the same
         start_penalty = self.min_long_diff(preds[0], self.longitudes[0]) / 2 * self.PENALTY
@@ -123,13 +127,21 @@ class RGM_Evolver:
         preds_range = math.radians(self.get_long_range(preds))
         long_penalty = math.fabs(preds_range - self.longitude_range) / self.longitude_range * self.PENALTY
 
+        # planet should enter retrograde and have similar retrostep
+        pred_retrostep, pred_prostep = self.get_steps(preds)
+        step_penalty = math.fabs(pred_retrostep-self.retrostep)/self.retrostep * self.PENALTY
+        step_penalty += math.fabs(pred_prostep-self.prostep)/self.prostep * self.PENALTY
+
+        # planet-around-epicycle speed should be related to synodic period
+        synodic_penalty = math.fabs(model.properties[RandGeoModel.IDX_PE_AV]-self.synodic_av)/self.synodic_av * self.PENALTY
+
         if verbose:
             print(
                 f"msqe_penalty: {msqe_penalty}\n"
                 f"start_penalty: {start_penalty}\n"
                 f"long_penalty: {long_penalty}\n"
             )
-        return self.PERFECT - msqe_penalty - start_penalty - long_penalty
+        return self.PERFECT - step_penalty # - start_penalty - long_penalty - step_penalty - synodic_penalty
 
 
     def reproduce(self, tourn: list[tuple[RandGeoModel, float]]):
@@ -146,6 +158,7 @@ class RGM_Evolver:
 
     def simulate(self, stage: int, best_model=None):
         # populate first generation
+        self.stage = stage
         self.gen = []
         for _ in range(self.GEN_SIZE):
             ini = RGM_Initializer()

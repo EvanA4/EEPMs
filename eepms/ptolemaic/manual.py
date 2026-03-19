@@ -14,14 +14,14 @@ from datetime import datetime
 #     0.016596681851442233, # ed_av
 # ]
 
-PROPS = [
-    2.958818311495659,     # eccentric_angle
-    2.073678767734587,     # epicycle_angle
-    4.9167658579161663,    # planet_angle
-    0.1,                   # eccentricity
-    0.20027502279005692,   # 0.19027502279005692   # radii
-    0.017170324245107377,  # pe_av
-    0.0014178648572779534, # ed_av
+PROPS = [ # jupiter
+    3.6068264511673194,    # eccentric_angle
+    1.9884574702567521,    # epicycle_angle
+    4.867850650528798,     # planet_angle
+    0.07738865135203035,   # eccentricity
+    0.19123429167371406,   # 0.19027502279005692   # radii
+    0.017249613205693678,  # pe_av
+    0.0014625219179870727, # ed_av
 ]
 
 

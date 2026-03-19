@@ -15,7 +15,7 @@ class RandGeoModel:
     IDX_ED_AV = 6
 
 
-    def __init__(self, src: RGM_Initializer):
+    def __init__(self, src: "RGM_Initializer"):
         self.stage = src.stage
         self.start_time = src.start_time
         self.start_long = src.start_long
@@ -155,7 +155,7 @@ class RGM_Initializer:
         self.avg_av = avg_av
 
         self.__start_eccentric_angle = random.random() * 2 * math.pi
-        self.__start_eccentricity = 0
+        self.__start_eccentricity = .1
         self.deferent_center = (
             self.__start_eccentricity * math.cos(self.__start_eccentric_angle),
             self.__start_eccentricity * math.sin(self.__start_eccentric_angle)
@@ -278,6 +278,14 @@ class RGM_Initializer:
             start_swap = random.randint(1, len(first.properties)-1)
             return first.properties[:start_swap] + second.properties[start_swap:]
         return first.properties.copy()
+    
+
+    def min_long_diff(self, first: float, second: float):
+        # assumes longitudes are in radians
+        long_top = max(first, second)
+        long_bottom = min(first, second)
+        start_diff_frac = min(long_top-long_bottom, (2*math.pi)-long_top+long_bottom) / math.pi
+        return start_diff_frac
 
 
     def guaranteed_epicycle(self):
@@ -290,7 +298,8 @@ class RGM_Initializer:
 
         x0 = (-b + math.sqrt(b * b - 4 * a * c)) / (2 * a)
         y0 = m * x0
-        if x0 + math.tan(math.radians(self.start_long)) * y0 > 0:
+        long0 = math.atan2(y0, x0)%(2*math.pi)
+        if self.min_long_diff(math.radians(self.start_long), long0) < .95:
             return math.atan2(y0 - k, x0 - h)%(2*math.pi)
         else:
             x1 = (-b - math.sqrt(b * b - 4 * a * c)) / (2 * a)

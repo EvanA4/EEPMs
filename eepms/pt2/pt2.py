@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def main():
     evo = RGM_Evolver()
-    deferent_model, dm_fitness = evo.simulate(1)
+    deferent_model, _ = evo.simulate(1)
     evo.simulate(2, deferent_model)
     # TODO failing to compute guaranteed epicycle
     # TODO on steep orbit paths msqe ignores retrograde
@@ -16,7 +16,7 @@ def main():
     # model.deferent_center = (0,0)
     # model.print_props()
     # model.graph_model()
-    #
+    
     # # Expected Planetary Path
     # plt.figure(figsize=(10, 6))
     # plt.title("Planetary Paths")
