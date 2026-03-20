@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 
 def main():
     evo = RGM_Evolver()
-    # deferent_model, _ = evo.simulate(1)
-    # evo.simulate(2, deferent_model)
+    deferent_model, _ = evo.simulate(1)
+    evo.simulate(2, deferent_model)
+    # TODO directly measure average days between retrogrades for preds
     # TODO maybe combine step and dldt penalties for stage 2 before refactor?
     # TODO failing to compute guaranteed epicycle
     # TODO on steep orbit paths msqe ignores retrograde

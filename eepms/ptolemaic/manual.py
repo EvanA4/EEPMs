@@ -14,12 +14,21 @@ from datetime import datetime
 #     0.016596681851442233, # ed_av
 # ]
 
+'''
+Longitude range:          0.9246916389899236
+Average angular velocity: 0.001460528561270936
+Synodic period:           351.4714699074074
+    angular velocity:     0.017876800381080277
+Avg Retrostep:            1.316600362035589
+Avg Prostep:              2.451321304606753
+'''
+
 PROPS = [ # jupiter
     3.6068264511673194,    # eccentric_angle
     1.9884574702567521,    # epicycle_angle
     4.867850650528798,     # planet_angle
     0.07738865135203035,   # eccentricity
-    0.19123429167371406,   # 0.19027502279005692   # radii
+    0.19123429167371406,   # radii
     0.017249613205693678,  # pe_av
     0.0014625219179870727, # ed_av
 ]

@@ -124,7 +124,7 @@ class RGM_Initializer:
     RADII_BUFFER = .1  # minimum distance between Earth and planet
     MUTATION_RATES = [
         math.radians(5), math.radians(5), math.radians(5),
-        .1, .1, .1, .1
+        .1, .1, .05, .05
     ]
     CROSSOVER_RATE = .2
 
@@ -175,13 +175,13 @@ class RGM_Initializer:
         ]
 
 
-    def stage2(self, deferent_model: RandGeoModel, synodic_av: float):
+    def stage2(self, deferent_model: RandGeoModel, synodic: float):
         self.stage = 2
         # import previously defined
         self.start_time = deferent_model.start_time
         self.start_long = deferent_model.start_long
         self.avg_av = deferent_model.avg_av
-        self.synodic_av = synodic_av
+        self.synodic_av = 2*math.pi/synodic + self.avg_av
 
         self.__start_eccentric_angle = deferent_model.properties[self.IDX_ECCENTRIC_ANGLE]
         self.__start_eccentricity = deferent_model.properties[self.IDX_ECCENTRICITY]
@@ -191,7 +191,7 @@ class RGM_Initializer:
 
         # generate random values for new properties
         self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
-        self.__start_pe_av = .8 * synodic_av + .4 * random.random() * synodic_av
+        self.__start_pe_av = .9 * self.synodic_av + .2 * random.random() * self.synodic_av
         self.__start_planet_angle = random.choice([ # assumes pred[0] of deferent_model is accurate
             self.__start_epicycle_angle,
             (self.__start_epicycle_angle+math.pi)%(2*math.pi)
@@ -247,7 +247,7 @@ class RGM_Initializer:
             )
             self.properties[self.IDX_ED_AV] = np.clip(
                 self.properties[self.IDX_ED_AV],
-                .8 * self.avg_av, 1.2 * self.avg_av
+                .9 * self.avg_av, 1.1 * self.avg_av
             )
 
         if self.stage == 2 or self.stage == 3:
@@ -265,7 +265,7 @@ class RGM_Initializer:
 
             self.properties[self.IDX_PE_AV] = np.clip(
                 self.properties[self.IDX_PE_AV],
-                .8*self.synodic_av, 1.2*self.synodic_av
+                .9*self.synodic_av, 1.1*self.synodic_av
             )
 
 
