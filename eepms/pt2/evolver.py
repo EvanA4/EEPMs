@@ -13,21 +13,21 @@ from geomodel import RandGeoModel, RGM_Initializer
 class RGM_Evolver:
     GEN_SIZE = 1000
     TOURN_SIZE = 10
-    NUM_GENS = [0, 10, 30, 5]
     PERFECT = 10
     PENALTY = 1
     SMALL_EPICYCLE = .1
-    STRENGTHS = [0, 1, 1, .2]
 
 
-    def __init__(self):
+    def __init__(self, planet: str):
         # read data
         self.gen: list[RandGeoModel] = []
-        df = pd.read_csv(os.path.join("csvs", "expected", "mars.csv"))
+        df = pd.read_csv(os.path.join("csvs", "expected", f"{planet}.csv"))
         self.datetimes = [datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") for timestamp in df["Timestamp"].to_list()]
         self.longitudes = df["Longitude"].to_list()
         self.cumu_longs = get_cumu_longs(self.longitudes)
         self.stage = 1
+        self.strength = 0.
+        self.planet = planet[0].upper() + planet[1:]
 
         # approximate average angular velocity of planet
         self.longitude_range = math.radians(self.cumu_longs[-1] - self.cumu_longs[0])
@@ -80,18 +80,33 @@ class RGM_Evolver:
         pred_offset = first_retro(pred_times, self.datetimes)
         offset_penalty = math.fabs(pred_offset-self.retro_offset) / self.retro_offset * self.PENALTY
 
-        if verbose:
+        stage2_fitness = self.PERFECT - retrolen_penalty - retroheight_penalty - retrogap_penalty - offset_penalty
+        if self.stage == 2 and verbose:
             print(
                 f"retrogap_penalty:    {retrogap_penalty}\n"
                 f"retrolen_penalty:    {retrolen_penalty}\n"
                 f"retroheight_penalty: {retroheight_penalty}\n"
                 f"offset_penalty:      {offset_penalty}\n"
             )
-        return self.PERFECT - retrolen_penalty - retroheight_penalty - retrogap_penalty - offset_penalty
+            return stage2_fitness
+
+        # must be at stage 3
+        errs = [min_long_diff(preds[i], self.longitudes[i], False) for i in range(len(self.datetimes))]
+        sq_errs = [err**2 for err in errs]
+        msqe_penalty = float(np.mean(sq_errs) * self.PENALTY * 5)
+        if verbose:
+            print(
+                f"msqe_penalty:        {msqe_penalty}\n"
+                f"retrogap_penalty:    {retrogap_penalty}\n"
+                f"retrolen_penalty:    {retrolen_penalty}\n"
+                f"retroheight_penalty: {retroheight_penalty}\n"
+                f"offset_penalty:      {offset_penalty}\n"
+            )
+        return stage2_fitness - msqe_penalty
 
 
     def reproduce(self, tourn: list[tuple[RandGeoModel, float]]):
-        strength = self.STRENGTHS[self.stage]
+        strength = self.strength
         output = []
         for _ in range(self.GEN_SIZE):
             first = random.randint(0, len(tourn)-1)
@@ -102,8 +117,9 @@ class RGM_Evolver:
         return output
 
 
-    def simulate(self, stage: int, best_model=None):
+    def simulate(self, stage: int, num_gens: int, strength: float, best_model=None):
         # populate first generation
+        self.strength = strength
         self.stage = stage
         self.gen = []
         for _ in range(self.GEN_SIZE):
@@ -119,7 +135,7 @@ class RGM_Evolver:
         gen_results: list[list[tuple[RandGeoModel, float]]] = []
         
         print("Gen | Fitness", flush=True)
-        for i in range(self.NUM_GENS[stage]):
+        for i in range(num_gens):
             print(f"{i:<3d}", end="", flush=True)
             gen_data = [
                 (self.gen[i], self.model_eval(self.gen[i]))
@@ -130,7 +146,7 @@ class RGM_Evolver:
             tourn = gen_data[:self.TOURN_SIZE]
             gen_results.append(tourn)
 
-            if i != self.NUM_GENS[stage]-1:
+            if i != num_gens-1:
                 self.gen = self.reproduce(tourn)
 
             print(f" | {tourn[0][1]:>7.4f}", flush=True)
@@ -142,7 +158,7 @@ class RGM_Evolver:
         plt.xlabel("Generation")
         plt.ylabel("Fitness")
         fitnesses = [result[0][1] for result in gen_results]
-        plt.plot(range(self.NUM_GENS[stage]), fitnesses)
+        plt.plot(range(num_gens), fitnesses)
         plt.show()
         plt.close()
 
@@ -154,7 +170,7 @@ class RGM_Evolver:
 
         # Expected Planetary Path
         plt.figure(figsize=(10, 6))
-        plt.title("Planetary Paths")
+        plt.title(f"Longitude vs. Time for {self.planet}")
         plt.xlabel("Date")
         plt.ylabel("Longitude")
         plt.yticks(range(0, 361, 30))

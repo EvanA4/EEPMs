@@ -175,37 +175,42 @@ class RGM_Initializer:
         ]
 
 
-    def stage2(self, deferent_model: RandGeoModel, synodic: float):
+    def stage2(self, best_model: RandGeoModel, synodic: float):
         self.stage = 2
         # import previously defined
-        self.start_time = deferent_model.start_time
-        self.start_long = deferent_model.start_long
-        self.avg_av = deferent_model.avg_av
+        self.start_time = best_model.start_time
+        self.start_long = best_model.start_long
+        self.avg_av = best_model.avg_av
         self.synodic_av = 2*math.pi/synodic + self.avg_av
+        self.deferent_center = best_model.deferent_center
 
-        self.__start_eccentric_angle = deferent_model.properties[self.IDX_ECCENTRIC_ANGLE]
-        self.__start_eccentricity = deferent_model.properties[self.IDX_ECCENTRICITY]
-        self.deferent_center = deferent_model.deferent_center
-        self.__start_ed_av = deferent_model.properties[self.IDX_ED_AV]
-        self.__start_epicycle_angle = deferent_model.properties[self.IDX_EPICYCLE_ANGLE]
+        # check if stage 2 was already performed
+        if best_model.properties[self.IDX_RADII] != 0:
+            self.properties = best_model.properties
 
-        # generate random values for new properties
-        self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
-        self.__start_pe_av = .9 * self.synodic_av + .2 * random.random() * self.synodic_av
-        self.__start_planet_angle = random.choice([ # assumes pred[0] of deferent_model is accurate
-            self.__start_epicycle_angle,
-            (self.__start_epicycle_angle+math.pi)%(2*math.pi)
-        ])
+        else:
+            self.__start_eccentric_angle = best_model.properties[self.IDX_ECCENTRIC_ANGLE]
+            self.__start_eccentricity = best_model.properties[self.IDX_ECCENTRICITY]
+            self.__start_ed_av = best_model.properties[self.IDX_ED_AV]
+            self.__start_epicycle_angle = best_model.properties[self.IDX_EPICYCLE_ANGLE]
 
-        self.properties = [
-            self.__start_eccentric_angle,
-            self.__start_epicycle_angle,
-            self.__start_planet_angle,
-            self.__start_eccentricity,
-            self.__start_radii,
-            self.__start_pe_av,
-            self.__start_ed_av,
-        ]
+            # generate random values for new properties
+            self.__start_radii = (1 - self.__start_eccentricity - self.RADII_BUFFER) * random.random()
+            self.__start_pe_av = .9 * self.synodic_av + .2 * random.random() * self.synodic_av
+            self.__start_planet_angle = random.choice([ # assumes pred[0] of deferent_model is accurate
+                self.__start_epicycle_angle,
+                (self.__start_epicycle_angle+math.pi)%(2*math.pi)
+            ])
+
+            self.properties = [
+                self.__start_eccentric_angle,
+                self.__start_epicycle_angle,
+                self.__start_planet_angle,
+                self.__start_eccentricity,
+                self.__start_radii,
+                self.__start_pe_av,
+                self.__start_ed_av,
+            ]
 
 
     def stage3(self, epicycle_model: RandGeoModel):
