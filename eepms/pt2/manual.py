@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from sys import argv, stderr
 import math
+import numpy as np
 
 
 PLANETS = ["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"]
@@ -111,15 +112,56 @@ def main():
     df = pd.read_csv(os.path.join("csvs", "expected", f"{argv[1]}.csv"))
     datetimes = [datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S") for timestamp in df["Timestamp"].to_list()]
     longitudes = df["Longitude"].to_list()
+    props = COMPUTED[argv[1]]
+    preds = [predict(props, datetimes[0], dt)[2] for dt in datetimes]
+
+    # compute relevant positions
+    epicycle_center, planet_pos, long = predict(props, datetimes[0], datetimes[0])
+    deferent_center = (
+        props[RandGeoModel.IDX_ECCENTRICITY] * math.cos(props[RandGeoModel.IDX_ECCENTRIC_ANGLE]),
+        props[RandGeoModel.IDX_ECCENTRICITY] * math.sin(props[RandGeoModel.IDX_ECCENTRIC_ANGLE])
+    )
+
+    # draw Earth, eccentric, and deferent
+    plt.figure(figsize=(6, 6))
+    plt.scatter([0], [0], c='b')
+    plt.scatter([deferent_center[0]], [deferent_center[1]], c='r')
+    fig = plt.gcf()
+    ax = fig.gca()
+    ax.add_patch(plt.Circle(deferent_center, 1, color='r', fill=False))
+
+    # draw planet and epicycle
+    plt.scatter(
+        [planet_pos[0]],
+        [planet_pos[1]], c='g'
+    )
+    ax.add_patch(plt.Circle(epicycle_center, props[RandGeoModel.IDX_RADII], color='g', fill=False))
+
+    # optionally draw initial longitude line
+    x_limits = ax.get_xlim()
+    y_limits = ax.get_ylim()
+    plt.plot(x_limits, [math.tan(math.radians(preds[0])) * val for val in x_limits])
+
+    # set axes equal
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    plot_radius = 0.5*max([x_range, y_range])
+    ax.set_xlim([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim([y_middle - plot_radius, y_middle + plot_radius])
+
+    plt.show()
+    plt.close()
 
     # Expected Planetary Path
     plt.figure(figsize=(10, 6))
-    plt.title("Planetary Paths")
+    plt.title(f"Longitude vs. Time for {argv[1][0].upper() + argv[1][1:]}")
     plt.xlabel("Date")
     plt.ylabel("Longitude")
     plt.yticks(range(0,361,30))
     plt.scatter(datetimes, longitudes, s=10, c='g', label="Expected", alpha=.5)
-    plt.scatter(datetimes, [predict(COMPUTED[argv[1]], datetimes[0], dt)[2] for dt in datetimes], s=10, c='r', label="Actual", alpha=.5)
+    plt.scatter(datetimes, preds, s=10, c='r', label="Actual", alpha=.5)
     plt.legend()
     plt.show()
     plt.close()
