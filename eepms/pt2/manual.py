@@ -124,8 +124,8 @@ def main():
 
     # draw Earth, eccentric, and deferent
     plt.figure(figsize=(6, 6))
-    plt.scatter([0], [0], c='b')
-    plt.scatter([deferent_center[0]], [deferent_center[1]], c='r')
+    plt.scatter([0], [0], c='b', s=40, label="Earth")
+    plt.scatter([deferent_center[0]], [deferent_center[1]], c='r', label='Eccentric')
     fig = plt.gcf()
     ax = fig.gca()
     ax.add_patch(plt.Circle(deferent_center, 1, color='r', fill=False))
@@ -133,14 +133,15 @@ def main():
     # draw planet and epicycle
     plt.scatter(
         [planet_pos[0]],
-        [planet_pos[1]], c='g'
+        [planet_pos[1]], c='g',
+        label=argv[1].capitalize()
     )
     ax.add_patch(plt.Circle(epicycle_center, props[RandGeoModel.IDX_RADII], color='g', fill=False))
 
     # optionally draw initial longitude line
     x_limits = ax.get_xlim()
     y_limits = ax.get_ylim()
-    plt.plot(x_limits, [math.tan(math.radians(preds[0])) * val for val in x_limits])
+    # plt.plot(x_limits, [math.tan(math.radians(preds[0])) * val for val in x_limits])
 
     # set axes equal
     x_range = abs(x_limits[1] - x_limits[0])
@@ -148,9 +149,14 @@ def main():
     y_range = abs(y_limits[1] - y_limits[0])
     y_middle = np.mean(y_limits)
     plot_radius = 0.5*max([x_range, y_range])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.title(f"Evolved Model for {argv[1].capitalize()}")
     ax.set_xlim([x_middle - plot_radius, x_middle + plot_radius])
     ax.set_ylim([y_middle - plot_radius, y_middle + plot_radius])
 
+    plt.tight_layout()
+    plt.legend()
     plt.show()
     plt.close()
 
